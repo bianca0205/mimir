@@ -14,10 +14,140 @@ import ListItemText from '@mui/material/ListItemText';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
 import MailIcon from '@mui/icons-material/Mail';
 import SearchAppBar from './search';
+import { useReadCypher } from 'use-neo4j';
+import { useState, useEffect } from 'react';
+import Graph from './graph';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import ArrowLeftIcon from '@mui/icons-material/ArrowLeft';
 
 const drawerWidth = 240;
 
+interface Note {
+  name: string;
+  expanded: boolean,
+  subnotes: Subnote[]
+}
+
+interface Subnote {
+  name: string;
+  expanded: boolean,
+  subnotes: string[]
+}
+
 export default function PermanentDrawerLeft() {
+
+  const [notes, setNotes] = useState<any>([]);
+
+  const [data, setData] = useState([
+    {
+      name: 'Note1',
+      expanded: false,
+      subnotes: [
+        {
+          name: '1Subnote1',
+          subnotes: ['1_sub1_subnote1', '1_sub1_subnote2', '1_sub1_subnote3'],
+          expanded: false,
+        },
+        {
+          name: '1Subnote2',
+          subnotes: ['1_sub2_subnote1', '1_sub2_subnote2', '1_sub2_subnote3'],
+          expanded: false,
+        },
+        {
+          name: '1Subnote3',
+          subnotes: ['1_sub3_subnote1', '1_sub3_subnote2', '1_sub3_subnote3'],
+          expanded: false,
+        },
+      ]
+    },
+    {
+      name: 'Note2',
+      expanded: false,
+      subnotes: [
+        {
+          name: '2Subnote1',
+          subnotes: ['2_sub1_subnote1', '2_sub1_subnote2', '2_sub1_subnote3'],
+          expanded: false,
+        },
+        {
+          name: '2Subnote2',
+          subnotes: ['2_sub2_subnote1', '2_sub2_subnote2', '2_sub2_subnote3'],
+          expanded: false,
+        },
+        {
+          name: '2Subnote3',
+          subnotes: ['2_sub3_subnote1', '2_sub3_subnote2', '2_sub3_subnote3'],
+          expanded: false,
+        },
+      ]
+    },
+    {
+      name: 'Note3',
+      expanded: false,
+      subnotes: [
+        {
+          name: '3Subnote1',
+          subnotes: ['3_sub1_subnote1', '3_sub1_subnote2', '3_sub1_subnote3'],
+          expanded: false,
+        },
+        {
+          name: '3Subnote2',
+          subnotes: ['3_sub2_subnote1', '3_sub2_subnote2', '3_sub2_subnote3'],
+          expanded: false,
+        },
+        {
+          name: '3Subnote3',
+          subnotes: ['3_sub3_subnote1', '3_sub3_subnote1', '3_sub3_subnote1'],
+          expanded: false,
+        },
+      ]
+    }
+  ])
+
+  const [subExpanded, setSubExpanded] = useState([false, false, false]);
+
+  const query = `MATCH (n:Note) RETURN n`
+  const params = {}
+  
+  const { loading, records } = useReadCypher(query, params)
+
+
+  useEffect(() => {
+    const getNotes = records?.map(record => record.get('n'));
+    setNotes(getNotes);
+  }, [records])
+
+  // useEffect(() => {
+  //   console.log(list_raw_data[0].expanded)
+  // }, [list_raw_data[0].expanded])
+
+  if (loading) return (<div>Loading...</div>)
+
+  const handleClick = (mynote: Note) => {
+    const updateState = data.map(note => {
+      if (note === mynote) {
+        const expanded = note.expanded;
+        return { ...note, expanded: !expanded }
+      }
+      return note;
+    })
+    setData(updateState);
+  }
+
+  const handleSubNoteClick = (mysubnote: Subnote) => {
+    const updateState = data.map(note => {
+      note.subnotes = note.subnotes.map(subnote => {
+        if (subnote === mysubnote) {
+          const expanded = subnote.expanded;
+          return { ...subnote, expanded: !expanded }
+        }
+        return subnote;
+      })
+      return note;
+    })
+    setData(updateState);
+  }
+
   return (
     <Box sx={{ display: 'flex' }}>
       <CssBaseline />
@@ -25,7 +155,7 @@ export default function PermanentDrawerLeft() {
         position="fixed"
         sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px` }}
       >
-        <Toolbar sx={{bgcolor: "black"}}>
+        <Toolbar sx={{ bgcolor: "black" }}>
           <Typography variant="h6" noWrap component="div">
             Mimir
           </Typography>
@@ -39,61 +169,64 @@ export default function PermanentDrawerLeft() {
             width: drawerWidth,
             boxSizing: 'border-box',
             bgcolor: 'black',
-            boxShadow:'3px rgb(0 0 0 / 0.2);'
+            boxShadow: '3px rgb(0 0 0 / 0.2);'
           },
         }}
         variant="permanent"
         anchor="left"
       >
-    
+
         <Toolbar />
         <React.Fragment><SearchAppBar></SearchAppBar></React.Fragment>
-        <List sx={{color:"white"}}>
-          {['All mail', 'Trash', 'Spam'].map((text, index) => (
-            <ListItem key={text} disablePadding>
-              <ListItemButton >
-                <ListItemIcon sx={{color:"white"}}>
-                  {index % 2 === 0 ? <InboxIcon /> : <MailIcon />}
-                </ListItemIcon>
-                <ListItemText primary={text} />
-              </ListItemButton>
-            </ListItem>
+        <List sx={{ color: "white" }}>
+          {data.map((note, index1) => (
+            <div>
+              <ListItem key={index1} disablePadding onClick={() => handleClick(note)}>
+                <ListItemButton>
+                  <ListItemText primary={note.name} />
+                  {note.expanded ? <ArrowLeftIcon /> : <ArrowDropDownIcon />}
+                </ListItemButton>
+              </ListItem>
+              {note.expanded && note.subnotes.map((subnote, index2) => (
+                <List sx={{ backgroundColor: "#111", margin: 0, padding: 0 }}>
+                  <ListItem key={index2} disablePadding onClick={() => handleSubNoteClick(subnote)}>
+                    <ListItemButton >
+                      <ListItemText primary={subnote.name} />
+                      {subnote.expanded ? <ArrowLeftIcon /> : <ArrowDropDownIcon />}
+                    </ListItemButton>
+                  </ListItem>
+                  {subnote.expanded && subnote.subnotes.map((subnote, index3) => (
+                    <List sx={{ backgroundColor: "#222", margin: 0, padding: 0 }}>
+                      <ListItem key={index3} disablePadding>
+                        <ListItemButton >
+                          <ListItemText primary={subnote} />
+                          {/* {subExpanded[index] ? <ArrowLeftIcon /> : <ArrowDropDownIcon />} */}
+                        </ListItemButton>
+                      </ListItem>
+                    </List>
+                  ))}
+                </List>
+              ))}
+            </div>
           ))}
         </List>
       </Drawer>
-      <Box 
+      <Box
         component="main"
         sx={{ flexGrow: 1, bgcolor: 'background.default', p: 3 }}
       >
         <Toolbar />
-        <Typography paragraph>
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
-          tempor incididunt ut labore et dolore magna aliqua. Rhoncus dolor purus non
-          enim praesent elementum facilisis leo vel. Risus at ultrices mi tempus
-          imperdiet. Semper risus in hendrerit gravida rutrum quisque non tellus.
-          Convallis convallis tellus id interdum velit laoreet id donec ultrices.
-          Odio morbi quis commodo odio aenean sed adipiscing. Amet nisl suscipit
-          adipiscing bibendum est ultricies integer quis. Cursus euismod quis viverra
-          nibh cras. Metus vulputate eu scelerisque felis imperdiet proin fermentum
-          leo. Mauris commodo quis imperdiet massa tincidunt. Cras tincidunt lobortis
-          feugiat vivamus at augue. At augue eget arcu dictum varius duis at
-          consectetur lorem. Velit sed ullamcorper morbi tincidunt. Lorem donec massa
-          sapien faucibus et molestie ac.
-        </Typography>
-        <Typography paragraph>
-          Consequat mauris nunc congue nisi vitae suscipit. Fringilla est ullamcorper
-          eget nulla facilisi etiam dignissim diam. Pulvinar elementum integer enim
-          neque volutpat ac tincidunt. Ornare suspendisse sed nisi lacus sed viverra
-          tellus. Purus sit amet volutpat consequat mauris. Elementum eu facilisis
-          sed odio morbi. Euismod lacinia at quis risus sed vulputate odio. Morbi
-          tincidunt ornare massa eget egestas purus viverra accumsan in. In hendrerit
-          gravida rutrum quisque non tellus orci ac. Pellentesque nec nam aliquam sem
-          et tortor. Habitant morbi tristique senectus et. Adipiscing elit duis
-          tristique sollicitudin nibh sit. Ornare aenean euismod elementum nisi quis
-          eleifend. Commodo viverra maecenas accumsan lacus vel facilisis. Nulla
-          posuere sollicitudin aliquam ultrices sagittis orci a.
-        </Typography>
+        {/* <div>
+            {notes && notes.map((note: any) => (
+              <div>
+                <div><b>Title: </b>{note.properties.title}</div>
+                <div><b>Body: </b>{note.properties.body}</div>
+              </div>
+            )
+            )}
+          </div> */}
+        <Graph />
       </Box>
-    </Box>
+    </Box >
   );
 }
